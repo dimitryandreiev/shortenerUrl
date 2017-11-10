@@ -1,5 +1,6 @@
 <?php
 require 'vendor/autoload.php';
+require_once 'config.php';
 
 $app = new \Slim\App([
     'settings' => [
@@ -11,9 +12,10 @@ $container = $app->getContainer();
 
 $container['getConn'] = function ($container) use ($app)
 {
-    return new PDO('mysql:host=localhost;dbname=url_shortener',
-        'root',
-        '',
+    return new PDO(
+        'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME,
+        DB_USER,
+        DB_PASS,
         [PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8"]
     );
 };
