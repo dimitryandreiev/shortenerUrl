@@ -6,13 +6,13 @@ Class UrlController extends Controller{
 	public function randomShortUrl($url) {
 		$characters = 'abcdefghijklmnopqrstuvwxyz0123456789';
 		$code = '';
-	 	$max = strlen($characters) - 1;
+		$max = strlen($characters) - 1;
 
-	 	for ($i = 0; $i < 10; $i++) {
-	      	$code .= $characters[mt_rand(0, $max)];
-	 	}
+		for ($i = 0; $i < 10; $i++) {
+			$code .= $characters[mt_rand(0, $max)];
+		}
 
-	 	return $code;
+		return $code;
 	}
 
 	/*
@@ -22,25 +22,29 @@ Class UrlController extends Controller{
 	@params $args argumentoss passados pela url
 	@return $response com código 301 caso tenha redirecionado, caso id não exista 404
 	*/
-	public function getUrl($request, $response, $args) {
-	    $id = $request->getAttribute('id');
-	    $conn = $this->getConn;
-	    $sql = "SELECT url FROM urls WHERE id=:id";
+	public function redirect($request, $response, $args) {
+		$id = $request->getAttribute('id');
+		$conn = $this->getConn;
+		$sql = "SELECT url FROM urls WHERE id=:id";
 
-	    $stmt = $conn->prepare($sql);
-	    $stmt->bindParam("id",$id);
-	    $stmt->execute();
-	    $url = $stmt->fetchObject();
+		$stmt = $conn->prepare($sql);
+		$stmt->bindParam("id",$id);
+		$stmt->execute();
+		$url = $stmt->fetchObject();
 
-	    if (empty($url)) {
-	    	 return $response
-		        ->withStatus(404)
-		        ->write('Not found');
-	    }
+		if (empty($url)) {
+			return $response->withJson(
+				[
+					'code' => 404,
+					'message' => 'Not found'
+				],
+				404
+			);
+		}
 
-	    return $response
-	        ->withStatus(301)
-	        ->withRedirect($url->url);
+		return $response
+			->withStatus(301)
+			->withRedirect($url->url);
 	}
 
 	/*
@@ -50,25 +54,27 @@ Class UrlController extends Controller{
 	@params $responde resposta do sistema
 	@params $args argumentoss passados pela url
 	*/
-	public function getUrlStats($request, $response, $args) {
-	    $id = $request->getAttribute('id');
-	    $conn = $this->getConn;
-	    $sql = "SELECT * FROM urls WHERE id=:id";
-	    $stmt = $conn->prepare($sql);
-	    $stmt->bindParam("id",$id);
-	    $stmt->execute();
-	    $url = $stmt->fetchObject();
+	public function getStats($request, $response, $args) {
+		$id = $request->getAttribute('id');
+		$conn = $this->getConn;
+		$sql = "SELECT id, hits, url, short_url as shortUrl FROM urls WHERE id=:id";
+		$stmt = $conn->prepare($sql);
+		$stmt->bindParam("id",$id);
+		$stmt->execute();
+		$url = $stmt->fetchObject();
 
-	    if (empty($url)) {
-	    	 return $response
-		        ->withStatus(404)
-		        ->write('Not found');
-	    }
+		if (empty($url)) {
+			return $response->withJson(
+				[
+					'code' => 404,
+					'message' => 'Not found'
+				],
+				404
+			);
+		}
 
-	    header('Content-type: application/json');
-	    echo json_encode($url);
+		return $response->withJson($url, 200);
 	}
-
 
 	/*
 	Busca estatísticas globais do sistema
@@ -77,26 +83,23 @@ Class UrlController extends Controller{
 	@params $responde resposta do sistema
 	@params $args argumentoss passados pela url
 	*/
-	public function getStats($request, $response, $args) {
-	    $conn = $this->getConn;
-	    $sql = "SELECT 
+	public function getGlobalStats($request, $response, $args) {
+		$conn = $this->getConn;
+		$sql = "SELECT 
 			SUM(hits) as hits,
 			COUNT(*) as urlCount
 			FROM `urls`";
-	    $stmt = $conn->prepare($sql);
-	    $stmt->execute();
-	    $stats = $stmt->fetchObject();
+		$stmt = $conn->prepare($sql);
+		$stmt->execute();
+		$stats = $stmt->fetchObject();
 
-	    $sqlTopUrl = "SELECT *
+	    $sqlTopUrl = "SELECT id, hits, url, short_url as shortUrl
 				FROM `urls`
 				ORDER BY hits DESC LIMIT 10";
 		$stmt = $this->getConn->query( $sqlTopUrl);
-	    $stats->topUrls = $stmt->fetchAll($this->fetchAll);
+		$stats->topUrls = $stmt->fetchAll($this->fetchAll);
 
-	    header('Content-type: application/json');
-	    echo json_encode($stats);
-
-	    return;
+		return $response->withJson($stats, 200);
 	}
 
 	/*
@@ -107,29 +110,27 @@ Class UrlController extends Controller{
 	@params $args argumentoss passados pela url
 	@return $response código 201 caso add
 	*/
-	public function addUrl($request, $response, $args) {
-	    $userId = $request->getAttribute('userId');
-	    $url = $request->getParsedBody();
-	    $code = $this->randomShortUrl($url['url']);
-	    $shortUrl = "http://chaordic/" . $code;
+	public function add($request, $response, $args) {
+		$userId = $request->getAttribute('userId');
+		$url = $request->getParsedBody();
+		$code = $this->randomShortUrl($url['url']);
+		$shortUrl = "http://localhost:8000/" . $code;
 
-	    $sql = "INSERT INTO "
-	            . "urls (url, short_url, user_id) "
-	            . "values (:url,:short_url,:user_id) ";
-	    $conn = $this->getConn;
-	    $stmt = $conn->prepare($sql);
-	    $stmt->bindParam("url",$url['url']);
-	    $stmt->bindParam("short_url",$shortUrl);
-	    $stmt->bindParam("user_id",$userId);
-	   	$stmt->execute();
-	    $url['id'] = $conn->lastInsertId();
+		$sql = "INSERT INTO "
+			. "urls (url, short_url, user_id) "
+			. "values (:url,:short_url,:user_id) ";
+		$conn = $this->getConn;
+		$stmt = $conn->prepare($sql);
+		$stmt->bindParam("url",$url['url']);
+		$stmt->bindParam("short_url",$shortUrl);
+		$stmt->bindParam("user_id",$userId);
+			$stmt->execute();
+		$result['id'] = $conn->lastInsertId();
+		$result['url'] = $url['url'];
+		$result['hits'] = 0;
+		$result['short_url'] = $shortUrl;
 
-        header('Content-type: application/json');
-	    echo json_encode($url);
-
-	    return $response
-	        ->withStatus(201)
-	        ->write('Created');
+		return $response->withJson($result, 201);
 	}
 
 	/*
@@ -139,13 +140,13 @@ Class UrlController extends Controller{
 	@params $responde resposta do sistema
 	@params $args argumentoss passados pela url
 	*/
-	public function deleteUrl($request, $response, $args)   {
-	    $id = $args['id'];
-	    $sql = "DELETE FROM urls WHERE id=:id";
-	    $conn = $this->getConn;
-	    $stmt = $conn->prepare($sql);
-	    $stmt->bindParam("id",$id);
-	    $stmt->execute();
-	    return;
+	public function delete($request, $response, $args)   {
+		$id = $args['id'];
+		$sql = "DELETE FROM urls WHERE id=:id";
+		$conn = $this->getConn;
+		$stmt = $conn->prepare($sql);
+		$stmt->bindParam("id",$id);
+		$stmt->execute();
+		return;
 	}
 }

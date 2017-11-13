@@ -42,18 +42,16 @@ $container['HomeController'] = function($container) use ($app) {
 routes
 */
 $app->get('/', 'HomeController:index')->setName('home');
-$app->get('/urls','UrlController:urlList');
-$app->get('/users','UserController:userList');
 
-$app->get('/urls/{id}','UrlController:getUrl');
-$app->get('/stats','UrlController:getStats');
-$app->get('/users/{userId}/stats','UserController:getUserStats');
-$app->get('/stats/{id}','UrlController:getUrlStats');
+$app->get('/urls/{id}','UrlController:redirect');
+$app->get('/stats','UrlController:getGlobalStats');
+$app->get('/users/{userId}/stats','UserController:getStats');
+$app->get('/stats/{id}','UrlController:getStats');
 
-$app->post('/users/{userId}/urls','UrlController:addUrl');
-$app->post('/users','UserController:addUser');
-$app->delete('/urls/{id}','UrlController:deleteUrl');
-$app->delete('/users/{id}','UserController:deleteUser');
+$app->post('/users/{userId}/urls','UrlController:add');
+$app->post('/users','UserController:add');
+$app->delete('/urls/{id}','UrlController:delete');
+$app->delete('/user/{id}','UserController:delete');
 
 $app->run();
 

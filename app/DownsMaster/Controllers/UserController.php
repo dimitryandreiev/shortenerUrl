@@ -10,43 +10,46 @@ Class UserController extends Controller{
 	@params $responde resposta do sistema
 	@params $args argumentoss passados pela url
 	*/
-	public function getUserStats($request, $response, $args) {
-	    $id = $request->getAttribute('userId');
-	    $conn = $this->getConn;
+	public function getStats($request, $response, $args) {
+		$id = $request->getAttribute('userId');
+		$conn = $this->getConn;
 
-	    $sqlUserCheck = "SELECT id FROM users WHERE id=:id";
-	    $stmt = $conn->prepare($sqlUserCheck);
-	    $stmt->bindParam("id",$id);
-	    $stmt->execute();
-	    $user = $stmt->fetchObject();
+		$sqlUserCheck = "SELECT id FROM users WHERE id=:id";
+		$stmt = $conn->prepare($sqlUserCheck);
+		$stmt->bindParam("id",$id);
+		$stmt->execute();
+		$user = $stmt->fetchObject();
 
-	    if (empty($user)) {
-	    	 return $response
-		        ->withStatus(404)
-		        ->write('Not found');
-	    }
+		if (empty($user)) {
+			return $response->withJson(
+				[
+					'code' => 404,
+					'message' => 'Not found'
+				],
+				404
+			);
+		}
 
-	    $sql = "SELECT 
+		$sql = "SELECT 
 			SUM(hits) as hits,
 			COUNT(*) as urlCount
 			FROM `urls`
 			WHERE user_id=:id";
-	    $stmt = $conn->prepare($sql);
-	    $stmt->bindParam("id",$id);
-	    $stmt->execute();
-	    $stats = $stmt->fetchObject();
+		$stmt = $conn->prepare($sql);
+		$stmt->bindParam("id",$id);
+		$stmt->execute();
+		$stats = $stmt->fetchObject();
 
-	    $sqlTopUrl = "SELECT *
+		$sqlTopUrl = "SELECT id, hits, url, short_url as shortUrl
 				FROM `urls`
 				WHERE user_id=:id
 				ORDER BY hits DESC LIMIT 10";
 		$stmt = $conn->prepare($sqlTopUrl);
 		$stmt->bindParam("id",$id);
 		$stmt->execute();
-	    $stats->topUrls = $stmt->fetchAll($this->fetchAll);
+		$stats->topUrls = $stmt->fetchAll($this->fetchAll);
 
-	    header('Content-type: application/json');
-	    echo json_encode($stats);
+		return $response->withJson($stats, 200);
 	}
 
 	/*
@@ -56,24 +59,17 @@ Class UserController extends Controller{
 	@params $responde resposta do sistema
 	@params $args argumentoss passados pela url
 	*/
-	public function addUser($request, $response, $args) {
-	    $user = $request->getParsedBody();
-	    $sql = "INSERT INTO "
-	            . "users (nome,email) "
-	            . "values (:nome,:email) ";
-	    $conn = $this->getConn;
-	    $stmt = $conn->prepare($sql);
-	    $stmt->bindParam("nome",$user['nome']);
-	    $stmt->bindParam("email",$user['email']);
-	    $stmt->execute();
-	    $user['id'] = $conn->lastInsertId();
+	public function add($request, $response, $args) {
+		$user = $request->getParsedBody();
+		$sql = "INSERT INTO "
+			. "users (id) "
+			. "values (:id) ";
+		$conn = $this->getConn;
+		$stmt = $conn->prepare($sql);
+		$stmt->bindParam("id",$user['id']);
+		$stmt->execute();
 
-	    header('Content-type: application/json');
-	    echo json_encode($user);
-
-	    return $response
-	        ->withStatus(201)
-	        ->write('Created');
+		return $response->withJson($user, 201);
 	}
 
 	/*
@@ -83,15 +79,15 @@ Class UserController extends Controller{
 	@params $responde resposta do sistema
 	@params $args argumentoss passados pela url
 	*/
-	public function deleteUser($request, $response, $args)   {
-	    $id = $args['id'];
-	    $sql = "DELETE FROM users WHERE id=:id";
-	    $conn = $this->getConn;
-	    $stmt = $conn->prepare($sql);
-	    $stmt->bindParam("id",$id);
-	    $stmt->execute();
+	public function delete($request, $response, $args)   {
+		$id = $args['id'];
+		$sql = "DELETE FROM users WHERE id=:id";
+		$conn = $this->getConn;
+		$stmt = $conn->prepare($sql);
+		$stmt->bindParam("id",$id);
+		$stmt->execute();
 
-	    return;
+		return;
 	}
 
 }
