@@ -1,8 +1,18 @@
 <?php
 namespace DownsMaster\Controllers;
 use DownsMaster\Controllers\Controller;
+use Slim\Http\Request;
+use Slim\Http\Response;
 
-Class UrlController extends Controller{
+Class UrlController extends Controller
+{
+
+	/*
+	Busca url original cadastrada no banco
+
+	@params $url endereço que será convertido
+	@return $code code encurtado da url
+	*/
 	public function randomShortUrl($url) {
 		$characters = 'abcdefghijklmnopqrstuvwxyz0123456789';
 		$code = '';
@@ -17,6 +27,7 @@ Class UrlController extends Controller{
 
 	/*
 	Busca url original cadastrada no banco
+
 	@params $request requisições enviadas
 	@params $responde resposta do sistema
 	@params $args argumentoss passados pela url
@@ -25,7 +36,7 @@ Class UrlController extends Controller{
 	public function redirect($request, $response, $args) {
 		$id = $request->getAttribute('id');
 		$conn = $this->getConn;
-		$sql = "SELECT url FROM urls WHERE id=:id";
+		$sql = "SELECT url, hits FROM urls WHERE id=:id";
 
 		$stmt = $conn->prepare($sql);
 		$stmt->bindParam("id",$id);
@@ -41,6 +52,14 @@ Class UrlController extends Controller{
 				404
 			);
 		}
+
+		// atualiza os hits a cada redirecionamento
+		$hits = $url->hits + 1;
+		$sqlHits = "UPDATE urls SET hits=:hits WHERE id=:id";
+		$stmt = $conn->prepare($sqlHits);
+		$stmt->bindParam("hits",$hits);
+		$stmt->bindParam("id",$id);
+		$stmt->execute();
 
 		return $response
 			->withStatus(301)

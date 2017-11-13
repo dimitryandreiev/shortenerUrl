@@ -1,8 +1,12 @@
 <?php
 namespace DownsMaster\Controllers;
 use DownsMaster\Controllers\Controller;
+use Slim\Http\Request;
+use Slim\Http\Response;
 
-Class UserController extends Controller{
+Class UserController extends Controller
+{
+
 	/*
 	Retorna estatísticas das urls de um usuário.
 
@@ -61,10 +65,27 @@ Class UserController extends Controller{
 	*/
 	public function add($request, $response, $args) {
 		$user = $request->getParsedBody();
+
+		$sqlVerifyUser = "SELECT id FROM users WHERE id=:id";
+		$conn = $this->getConn;
+		$stmt = $conn->prepare($sqlVerifyUser);
+		$stmt->bindParam("id",$user['id']);
+		$stmt->execute();
+		$repeatedUser = $stmt->fetchObject();
+
+		if (!empty($repeatedUser)) {
+			return $response->withJson(
+				[
+					'code' => 409,
+					'message' => 'Conflict'
+				],
+				409
+			);
+		}
+
 		$sql = "INSERT INTO "
 			. "users (id) "
 			. "values (:id) ";
-		$conn = $this->getConn;
 		$stmt = $conn->prepare($sql);
 		$stmt->bindParam("id",$user['id']);
 		$stmt->execute();
